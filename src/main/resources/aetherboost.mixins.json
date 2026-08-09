@@ -7,7 +7,6 @@
     "ChunkCullingMixin",
     "TextureAnimationMixin",
     "EntityRenderDistanceMixin",
-    "CloudDisableMixin",
-    "ParticleLimitMixin"
+    "CloudDisableMixin"
   ]
 }
