@@ -8,8 +8,6 @@ import java.util.Properties;
 public class TuningApplier {
     private static final Path CONFIG_DIR = Paths.get(System.getProperty("user.dir"), "config");
     private static final Path BACKUP_DIR = CONFIG_DIR.resolve("aetherboost_backup");
-
-    // Ключ для включения/отключения оптимизаций
     public static final String OPTIMIZATION_KEY = "aetherboost.optimizations.enabled";
 
     public static boolean areOptimizationsEnabled() {
@@ -17,204 +15,188 @@ public class TuningApplier {
     }
 
     /**
-     * Применяет все оптимизации: рендер, Sodium, Iris, Minecraft, миксины.
+     * Применяет ВСЕ оптимизации.
      */
     public static void apply(String renderer, boolean isPC) {
-        AetherBoostMod.LOGGER.info("Применяю полную оптимизацию (рендер: {}, PC: {})", renderer, isPC);
+        AetherBoostMod.LOGGER.info("Применяю полную оптимизацию...");
 
-        // 1. Бекап текущих конфигов
+        // 1. Бекап
         backupCurrentConfigs();
 
-        // 2. Меняем рендер лаунчера
+        // 2. Рендер
         applyRendererOnly(renderer);
 
-        // 3. Применяем настройки Sodium (если установлен)
+        // 3. Sodium (если есть)
         applySodiumConfig(isPC);
 
-        // 4. Применяем настройки Iris (если установлен)
+        // 4. Iris (если есть)
         applyIrisConfig(isPC);
 
-        // 5. Применяем общие настройки Minecraft
+        // 5. options.txt
         applyMinecraftConfig(isPC);
 
-        // 6. Включаем все миксины-оптимизации
-        System.setProperty(OPTIMIZATION_KEY, "true");
-        AetherBoostMod.LOGGER.info("Все оптимизации активированы.");
+        // 6. JVM-аргументы
+        applyJVMArgs(isPC);
 
-        AetherBoostMod.LOGGER.info("Все настройки применены. Перезапустите игру для полного эффекта.");
+        // 7. Настройки лаунчера
+        applyLauncherConfig(isPC);
+
+        System.setProperty(OPTIMIZATION_KEY, "true");
+        AetherBoostMod.LOGGER.info("Все оптимизации применены. Перезапустите игру!");
     }
 
-    /**
-     * Меняет только рендер, без остальных настроек.
-     */
+    // --- Рендер ---
     public static void applyRendererOnly(String renderer) {
         AetherBoostMod.LOGGER.info("Переключаю рендер на: {}", renderer);
-
-        // Ищем конфиг лаунчера
-        String[] configPaths = {
+        String[] paths = {
             "/storage/emulated/0/Android/data/io.github.fold.launcher/files/config.json",
             "/storage/emulated/0/Android/data/net.kdt.pojavlaunch/files/config.json",
             "/storage/emulated/0/Android/data/com.movtery.zalithlauncher/files/config.json"
         };
-
-        for (String path : configPaths) {
-            File configFile = new File(path);
-            if (configFile.exists()) {
+        for (String p : paths) {
+            File f = new File(p);
+            if (f.exists()) {
                 try {
-                    String content = Files.readString(configFile.toPath());
-                    content = content.replaceAll("\"renderer\"\\s*:\\s*\"[^\"]*\"", "\"renderer\": \"" + renderer + "\"");
-                    Files.writeString(configFile.toPath(), content);
-                    AetherBoostMod.LOGGER.info("Конфиг лаунчера обновлён: {}", path);
+                    String c = Files.readString(f.toPath());
+                    c = c.replaceAll("\"renderer\"\\s*:\\s*\"[^\"]*\"", "\"renderer\": \"" + renderer + "\"");
+                    Files.writeString(f.toPath(), c);
+                    AetherBoostMod.LOGGER.info("Обновлён: {}", p);
                     return;
                 } catch (IOException e) {
-                    AetherBoostMod.LOGGER.error("Не удалось обновить конфиг лаунчера", e);
+                    AetherBoostMod.LOGGER.error("Ошибка обновления конфига", e);
                 }
             }
         }
-
-        // Если лаунчер не найден — меняем системное свойство (для ПК)
         System.setProperty("pojav.renderer", renderer);
-        AetherBoostMod.LOGGER.info("Системное свойство pojav.renderer установлено: {}", renderer);
     }
 
-    /**
-     * Оптимизирует конфиг Sodium.
-     */
+    // --- Sodium ---
     private static void applySodiumConfig(boolean isPC) {
-        File sodiumConfig = CONFIG_DIR.resolve("sodium-options.json").toFile();
-        if (!sodiumConfig.exists()) {
-            AetherBoostMod.LOGGER.info("Sodium не установлен, пропускаю");
-            return;
-        }
-
+        File f = CONFIG_DIR.resolve("sodium-options.json").toFile();
+        if (!f.exists()) return;
         try {
-            String content = Files.readString(sodiumConfig.toPath());
-            if (isPC) {
-                content = content.replaceAll("\"quality\"\\s*:\\s*\\{[^}]*\\}", "\"quality\": {\"weather_quality\": \"FAST\", \"leaves_quality\": \"FAST\", \"enable_vignette\": false}");
-                content = content.replaceAll("\"performance\"\\s*:\\s*\\{[^}]*\\}", "\"performance\": {\"chunk_builder_threads\": 0, \"always_defer_chunk_updates\": true, \"animate_only_visible_textures\": true, \"use_entity_culling\": true, \"use_particle_culling\": true, \"use_fog_occlusion\": true, \"use_block_face_culling\": true, \"use_compact_vertex_format\": true, \"use_translucent_face_sorting\": false}");
-            } else {
-                content = content.replaceAll("\"quality\"\\s*:\\s*\\{[^}]*\\}", "\"quality\": {\"weather_quality\": \"FAST\", \"leaves_quality\": \"FAST\", \"enable_vignette\": false}");
-                content = content.replaceAll("\"performance\"\\s*:\\s*\\{[^}]*\\}", "\"performance\": {\"chunk_builder_threads\": 0, \"always_defer_chunk_updates\": true, \"animate_only_visible_textures\": false, \"use_entity_culling\": true, \"use_particle_culling\": true, \"use_fog_occlusion\": true, \"use_block_face_culling\": true, \"use_compact_vertex_format\": true, \"use_translucent_face_sorting\": false}");
-            }
-            Files.writeString(sodiumConfig.toPath(), content);
-            AetherBoostMod.LOGGER.info("Конфиг Sodium обновлён");
+            String c = Files.readString(f.toPath());
+            String perf = isPC
+                ? "\"performance\": {\"chunk_builder_threads\": 0, \"always_defer_chunk_updates\": true, \"animate_only_visible_textures\": true, \"use_entity_culling\": true, \"use_particle_culling\": true, \"use_fog_occlusion\": true, \"use_block_face_culling\": true, \"use_compact_vertex_format\": true}"
+                : "\"performance\": {\"chunk_builder_threads\": 0, \"always_defer_chunk_updates\": true, \"animate_only_visible_textures\": false, \"use_entity_culling\": true, \"use_particle_culling\": true, \"use_fog_occlusion\": true, \"use_block_face_culling\": true, \"use_compact_vertex_format\": true}";
+            c = c.replaceAll("\"quality\"\\s*:\\s*\\{[^}]*\\}", "\"quality\": {\"weather_quality\": \"FAST\", \"leaves_quality\": \"FAST\", \"enable_vignette\": false}");
+            c = c.replaceAll("\"performance\"\\s*:\\s*\\{[^}]*\\}", perf);
+            Files.writeString(f.toPath(), c);
+            AetherBoostMod.LOGGER.info("Sodium обновлён");
         } catch (IOException e) {
-            AetherBoostMod.LOGGER.error("Ошибка обновления Sodium", e);
+            AetherBoostMod.LOGGER.error("Ошибка Sodium", e);
         }
     }
 
-    /**
-     * Оптимизирует конфиг Iris.
-     */
+    // --- Iris ---
     private static void applyIrisConfig(boolean isPC) {
-        File irisConfig = CONFIG_DIR.resolve("iris.properties").toFile();
-        if (!irisConfig.exists()) {
-            AetherBoostMod.LOGGER.info("Iris не установлен, пропускаю");
-            return;
-        }
-
+        File f = CONFIG_DIR.resolve("iris.properties").toFile();
+        if (!f.exists()) return;
         try {
-            Properties props = new Properties();
-            try (FileInputStream fis = new FileInputStream(irisConfig)) {
-                props.load(fis);
-            }
-            props.setProperty("maxShadowRenderDistance", isPC ? "8" : "4");
-            props.setProperty("enableParticles", isPC ? "true" : "false");
-            props.setProperty("enableClouds", "false");
-            try (FileOutputStream fos = new FileOutputStream(irisConfig)) {
-                props.store(fos, "Optimized by AetherBoost AI Pro");
-            }
-            AetherBoostMod.LOGGER.info("Конфиг Iris обновлён");
+            Properties p = new Properties();
+            try (FileInputStream fis = new FileInputStream(f)) { p.load(fis); }
+            p.setProperty("maxShadowRenderDistance", isPC ? "8" : "4");
+            p.setProperty("enableParticles", isPC ? "true" : "false");
+            p.setProperty("enableClouds", "false");
+            try (FileOutputStream fos = new FileOutputStream(f)) { p.store(fos, "AetherBoost"); }
+            AetherBoostMod.LOGGER.info("Iris обновлён");
         } catch (IOException e) {
-            AetherBoostMod.LOGGER.error("Ошибка обновления Iris", e);
+            AetherBoostMod.LOGGER.error("Ошибка Iris", e);
         }
     }
 
-    /**
-     * Оптимизирует стандартный конфиг Minecraft.
-     */
+    // --- options.txt ---
     private static void applyMinecraftConfig(boolean isPC) {
-        File optionsFile = new File(System.getProperty("user.dir"), "options.txt");
-        if (!optionsFile.exists()) {
-            AetherBoostMod.LOGGER.info("options.txt не найден, пропускаю");
-            return;
-        }
-
+        File f = new File(System.getProperty("user.dir"), "options.txt");
+        if (!f.exists()) return;
         try {
-            String content = Files.readString(optionsFile.toPath());
-            content = content.replaceAll("renderDistance:\\d+", "renderDistance:" + (isPC ? "10" : "6"));
-            content = content.replaceAll("graphicsMode:\\w+", "graphicsMode:fast");
-            content = content.replaceAll("ao:\\w+", "ao:false");
-            content = content.replaceAll("enableVsync:\\w+", "enableVsync:false");
-            content = content.replaceAll("maxFps:\\d+", "maxFps:120");
-            content = content.replaceAll("enableClouds:\\w+", "enableClouds:false");
-            Files.writeString(optionsFile.toPath(), content);
-            AetherBoostMod.LOGGER.info("Конфиг Minecraft обновлён");
+            String c = Files.readString(f.toPath());
+            c = c.replaceAll("renderDistance:\\d+", "renderDistance:" + (isPC ? "10" : "6"));
+            c = c.replaceAll("graphicsMode:\\w+", "graphicsMode:fast");
+            c = c.replaceAll("ao:\\w+", "ao:false");
+            c = c.replaceAll("enableVsync:\\w+", "enableVsync:false");
+            c = c.replaceAll("maxFps:\\d+", "maxFps:120");
+            c = c.replaceAll("enableClouds:\\w+", "enableClouds:false");
+            Files.writeString(f.toPath(), c);
+            AetherBoostMod.LOGGER.info("options.txt обновлён");
         } catch (IOException e) {
-            AetherBoostMod.LOGGER.error("Ошибка обновления Minecraft", e);
+            AetherBoostMod.LOGGER.error("Ошибка options.txt", e);
         }
     }
 
-    /**
-     * Создаёт бекап текущих конфигов перед изменениями.
-     */
+    // --- JVM-аргументы ---
+    private static void applyJVMArgs(boolean isPC) {
+        AetherBoostMod.LOGGER.info("Рекомендуемые JVM-аргументы:");
+        String args = "-XX:+UseZGC -XX:+DisableExplicitGC -Djava.awt.headless=true";
+        if (!isPC) {
+            args += " -Xms256M -Xmx" + Math.min(SystemScanner.getTotalRAM() / 2, 2048) + "M";
+        }
+        AetherBoostMod.LOGGER.info(args);
+        // Записываем в файл рядом с лаунчером
+        File jvmFile = new File(System.getProperty("user.dir"), "aetherboost_jvm_args.txt");
+        try {
+            Files.writeString(jvmFile.toPath(), args);
+            AetherBoostMod.LOGGER.info("JVM-аргументы сохранены в {}", jvmFile);
+        } catch (IOException e) {
+            AetherBoostMod.LOGGER.error("Ошибка сохранения JVM", e);
+        }
+    }
+
+    // --- Настройки лаунчера ---
+    private static void applyLauncherConfig(boolean isPC) {
+        String[] paths = {
+            "/storage/emulated/0/Android/data/io.github.fold.launcher/files/config.json",
+            "/storage/emulated/0/Android/data/net.kdt.pojavlaunch/files/config.json",
+            "/storage/emulated/0/Android/data/com.movtery.zalithlauncher/files/config.json"
+        };
+        for (String p : paths) {
+            File f = new File(p);
+            if (f.exists()) {
+                try {
+                    String c = Files.readString(f.toPath());
+                    c = c.replaceAll("\"resolution\"\\s*:\\s*\\d+", "\"resolution\": 70");
+                    c = c.replaceAll("\"forceVsync\"\\s*:\\s*\\w+", "\"forceVsync\": false");
+                    Files.writeString(f.toPath(), c);
+                    AetherBoostMod.LOGGER.info("Лаунчер обновлён: {}", p);
+                    return;
+                } catch (IOException e) {
+                    AetherBoostMod.LOGGER.error("Ошибка лаунчера", e);
+                }
+            }
+        }
+    }
+
+    // --- Бекап ---
     private static void backupCurrentConfigs() {
         try {
             Files.createDirectories(BACKUP_DIR);
-
-            File sodiumConfig = CONFIG_DIR.resolve("sodium-options.json").toFile();
-            if (sodiumConfig.exists()) {
-                Files.copy(sodiumConfig.toPath(), BACKUP_DIR.resolve("sodium-options.json"), StandardCopyOption.REPLACE_EXISTING);
+            for (String name : new String[]{"sodium-options.json", "iris.properties"}) {
+                File f = CONFIG_DIR.resolve(name).toFile();
+                if (f.exists()) Files.copy(f.toPath(), BACKUP_DIR.resolve(name), StandardCopyOption.REPLACE_EXISTING);
             }
-
-            File irisConfig = CONFIG_DIR.resolve("iris.properties").toFile();
-            if (irisConfig.exists()) {
-                Files.copy(irisConfig.toPath(), BACKUP_DIR.resolve("iris.properties"), StandardCopyOption.REPLACE_EXISTING);
-            }
-
-            File optionsFile = new File(System.getProperty("user.dir"), "options.txt");
-            if (optionsFile.exists()) {
-                Files.copy(optionsFile.toPath(), BACKUP_DIR.resolve("options.txt"), StandardCopyOption.REPLACE_EXISTING);
-            }
-
-            AetherBoostMod.LOGGER.info("Бекап конфигов создан в {}", BACKUP_DIR);
+            File opt = new File(System.getProperty("user.dir"), "options.txt");
+            if (opt.exists()) Files.copy(opt.toPath(), BACKUP_DIR.resolve("options.txt"), StandardCopyOption.REPLACE_EXISTING);
+            AetherBoostMod.LOGGER.info("Бекап создан");
         } catch (IOException e) {
-            AetherBoostMod.LOGGER.error("Ошибка создания бекапа", e);
+            AetherBoostMod.LOGGER.error("Ошибка бекапа", e);
         }
     }
 
-    /**
-     * Сбрасывает все настройки до исходных (из бекапа).
-     */
+    // --- Сброс ---
     public static void reset() {
-        AetherBoostMod.LOGGER.info("Сброс всех настроек из бекапа...");
-
+        AetherBoostMod.LOGGER.info("Сброс...");
         try {
-            File sodiumBackup = BACKUP_DIR.resolve("sodium-options.json").toFile();
-            if (sodiumBackup.exists()) {
-                Files.copy(sodiumBackup.toPath(), CONFIG_DIR.resolve("sodium-options.json"), StandardCopyOption.REPLACE_EXISTING);
-                AetherBoostMod.LOGGER.info("Sodium восстановлен");
+            for (String name : new String[]{"sodium-options.json", "iris.properties"}) {
+                File backup = BACKUP_DIR.resolve(name).toFile();
+                if (backup.exists()) Files.copy(backup.toPath(), CONFIG_DIR.resolve(name), StandardCopyOption.REPLACE_EXISTING);
             }
-
-            File irisBackup = BACKUP_DIR.resolve("iris.properties").toFile();
-            if (irisBackup.exists()) {
-                Files.copy(irisBackup.toPath(), CONFIG_DIR.resolve("iris.properties"), StandardCopyOption.REPLACE_EXISTING);
-                AetherBoostMod.LOGGER.info("Iris восстановлен");
-            }
-
-            File optionsBackup = BACKUP_DIR.resolve("options.txt").toFile();
-            if (optionsBackup.exists()) {
-                Files.copy(optionsBackup.toPath(), Paths.get(System.getProperty("user.dir"), "options.txt"), StandardCopyOption.REPLACE_EXISTING);
-                AetherBoostMod.LOGGER.info("options.txt восстановлен");
-            }
-
-            // Сбрасываем системные свойства
+            File optBackup = BACKUP_DIR.resolve("options.txt").toFile();
+            if (optBackup.exists()) Files.copy(optBackup.toPath(), Paths.get(System.getProperty("user.dir"), "options.txt"), StandardCopyOption.REPLACE_EXISTING);
             System.setProperty("pojav.renderer", "");
             System.setProperty(OPTIMIZATION_KEY, "false");
-
-            AetherBoostMod.LOGGER.info("Все настройки сброшены до исходных");
+            AetherBoostMod.LOGGER.info("Сброшено");
         } catch (IOException e) {
-            AetherBoostMod.LOGGER.error("Ошибка сброса настроек", e);
+            AetherBoostMod.LOGGER.error("Ошибка сброса", e);
         }
     }
-        }
+}
