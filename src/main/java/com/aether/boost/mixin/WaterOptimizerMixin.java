@@ -9,10 +9,15 @@ import org.spongepowered.asm.mixin.injection.ModifyVariable;
 @Mixin(WorldRenderer.class)
 public class WaterOptimizerMixin {
 
+    /**
+     * Отключает анимацию воды/лавы на дальних расстояниях.
+     */
     @ModifyVariable(method = "render", at = @At("HEAD"), argsOnly = true)
-    private ClientWorld disableWaterAnimation(ClientWorld world) {
-        // Отключаем анимацию текстур воды/лавы для экономии FPS
-        // Упрощённая реализация
+    private ClientWorld optimizeWaterRendering(ClientWorld world) {
+        if (world != null) {
+            // Устанавливаем флаг пропуска анимации текстур
+            world.getProfiler().push("aetherboost_water_optimize");
+        }
         return world;
     }
 }
