@@ -1,11 +1,9 @@
 package com.aether.boost;
 
 import com.aether.boost.gui.BenchmarkScreen;
-import com.aether.boost.gui.FPSMonitor;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
-import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
 import net.fabricmc.fabric.api.client.screen.v1.Screens;
 import net.minecraft.client.gui.screen.TitleScreen;
@@ -48,11 +46,6 @@ public class AetherBoostMod implements ModInitializer {
                     }).dimensions(10, 10, 120, 20).build()
                 );
             }
-        });
-
-        // FPS-монитор через Fabric API (без миксинов!)
-        HudRenderCallback.EVENT.register((drawContext, tickDelta) -> {
-            FPSMonitor.render(drawContext);
         });
     }
 }
