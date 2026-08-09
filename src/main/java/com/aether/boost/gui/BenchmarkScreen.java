@@ -5,7 +5,6 @@ import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.text.Text;
-
 import java.util.List;
 
 public class BenchmarkScreen extends Screen {
@@ -26,19 +25,16 @@ public class BenchmarkScreen extends Screen {
     @Override
     protected void init() {
         int cx = this.width / 2;
-
         if (!loading && !tested) {
             addDrawableChild(ButtonWidget.builder(Text.literal("Запустить умный тест"), btn -> startBenchmark())
                 .dimensions(cx - 80, 40, 160, 20).build());
         }
-
         if (tested && !loading) {
             addDrawableChild(ButtonWidget.builder(Text.literal("✅ Применить настройки"), btn -> applyBest())
                 .dimensions(cx - 80, 70, 160, 20).build());
             addDrawableChild(ButtonWidget.builder(Text.literal("🔄 Сбросить всё"), btn -> resetAll())
                 .dimensions(cx - 80, 95, 160, 20).build());
         }
-
         addDrawableChild(ButtonWidget.builder(Text.literal("Закрыть"), btn -> close())
             .dimensions(cx - 30, this.height - 30, 60, 20).build());
     }
@@ -55,7 +51,6 @@ public class BenchmarkScreen extends Screen {
     public void tick() {
         super.tick();
         if (!loading) return;
-
         loadingStep++;
         switch (loadingStep) {
             case 20:
@@ -82,11 +77,7 @@ public class BenchmarkScreen extends Screen {
             case 160:
                 loadingMessage = "Рассчитываем прирост FPS...";
                 estimatedGain = ProfileGenerator.estimateGain(
-                    SystemScanner.getGPUInfo(),
-                    SystemScanner.getFreeRAM(),
-                    bestRenderer,
-                    SystemScanner.isPC()
-                );
+                    SystemScanner.getGPUInfo(), SystemScanner.getFreeRAM(), bestRenderer, SystemScanner.isPC());
                 break;
             case 180:
                 loading = false;
@@ -117,14 +108,11 @@ public class BenchmarkScreen extends Screen {
     @Override
     public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
         renderBackground(ctx, mouseX, mouseY, delta);
-
         if (loading) {
             String dots = ".".repeat((loadingStep / 10) % 4);
             ctx.drawCenteredTextWithShadow(textRenderer, loadingMessage + dots, this.width / 2, this.height / 2 - 20, 0xFFFF55);
-            int barWidth = 200;
-            int barHeight = 6;
-            int barX = this.width / 2 - barWidth / 2;
-            int barY = this.height / 2;
+            int barWidth = 200, barHeight = 6;
+            int barX = this.width / 2 - barWidth / 2, barY = this.height / 2;
             int progress = Math.min(loadingStep * 100 / 180, 100);
             ctx.fill(barX, barY, barX + barWidth, barY + barHeight, 0xFF555555);
             ctx.fill(barX, barY, barX + barWidth * progress / 100, barY + barHeight, 0xFF00FF00);
@@ -134,7 +122,6 @@ public class BenchmarkScreen extends Screen {
                 ctx.drawCenteredTextWithShadow(textRenderer, lines[i], this.width / 2, 15 + i * 12, 0xFFFFFF);
             }
         }
-
         super.render(ctx, mouseX, mouseY, delta);
     }
-              }
+            }
