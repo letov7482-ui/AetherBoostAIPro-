@@ -6,17 +6,18 @@ import java.io.FileWriter;
 import java.io.IOException;
 
 public class TuningApplier {
-    public static void apply(String renderer) {
-        AetherBoostMod.LOGGER.info("Applying settings for renderer: {}", renderer);
+    public static void apply(String renderer, boolean isPC) {
+        AetherBoostMod.LOGGER.info("Применяю настройки для рендера: {} (PC: {})", renderer, isPC);
         File config = new File(System.getProperty("user.dir"), "options.txt");
         try (FileWriter fw = new FileWriter(config, true)) {
             fw.write("\nrenderer:" + renderer + "\n");
+            fw.write("pc_mode:" + isPC + "\n");
         } catch (IOException e) {
-            AetherBoostMod.LOGGER.error("Failed to apply settings", e);
+            AetherBoostMod.LOGGER.error("Ошибка применения", e);
         }
     }
 
     public static void reset() {
-        AetherBoostMod.LOGGER.info("Resetting all settings to default");
+        AetherBoostMod.LOGGER.info("Сброс всех настроек");
     }
 }
