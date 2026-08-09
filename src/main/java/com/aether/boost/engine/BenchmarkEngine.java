@@ -2,39 +2,80 @@ package com.aether.boost.engine;
 
 import com.aether.boost.AetherBoostMod;
 import net.minecraft.client.MinecraftClient;
-import java.util.List;
+import java.util.*;
 
 public class BenchmarkEngine {
-    private static final int WARMUP_MS = 500;
-    private static final int TEST_DURATION_MS = 2000;
 
+    /**
+     * Тестирует все рендеры и возвращает имя лучшего.
+     */
     public static String findBestRenderer(List<String> available, boolean isPC) {
         if (available.isEmpty()) return "GL4ES";
-        String best = available.get(0);
-        double bestFPS = 0;
-        String originalRenderer = System.getProperty("pojav.renderer", "GL4ES");
-        AetherBoostMod.LOGGER.info("Тестирую {} рендеров...", available.size());
+
+        AetherBoostMod.LOGGER.info("=== Starting renderer benchmark ===");
+        AetherBoostMod.LOGGER.info("Testing {} renderers: {}", available.size(), available);
+
+        String bestRenderer = available.get(0);
+        int bestFPS = 0;
+        Map<String, Integer> results = new LinkedHashMap<>();
+
         for (String renderer : available) {
-            TuningApplier.applyRendererOnly(renderer);
-            sleep(WARMUP_MS);
-            double fps = measureFPS();
-            AetherBoostMod.LOGGER.info("  {} → {} FPS", renderer, String.format("%.1f", fps));
-            if (fps > bestFPS) { bestFPS = fps; best = renderer; }
+            AetherBoostMod.LOGGER.info("Testing: {}...", renderer);
+            int fps = testRenderer(renderer);
+            results.put(renderer, fps);
+            AetherBoostMod.LOGGER.info("  {} = {} FPS", renderer, fps);
+
+            if (fps > bestFPS) {
+                bestFPS = fps;
+                bestRenderer = renderer;
+            }
         }
-        TuningApplier.applyRendererOnly(originalRenderer);
-        AetherBoostMod.LOGGER.info("Лучший: {} ({} FPS)", best, String.format("%.1f", bestFPS));
-        return best;
+
+        AetherBoostMod.LOGGER.info("=== Results ===");
+        for (var entry : results.entrySet()) {
+            String marker = entry.getKey().equals(bestRenderer) ? " ★ BEST" : "";
+            AetherBoostMod.LOGGER.info("  {} = {} FPS{}", entry.getKey(), entry.getValue(), marker);
+        }
+
+        return bestRenderer;
     }
 
-    private static double measureFPS() {
+    /**
+     * Реально замеряет FPS на текущем рендере.
+     */
+    private static int testRenderer(String renderer) {
         MinecraftClient client = MinecraftClient.getInstance();
+
+        // Сохраняем текущий рендер
+        String oldRenderer = System.getProperty("pojav.renderer", "");
+
+        // Переключаем рендер
+        TuningApplier.applyRendererOnly(renderer);
+
+        // Ждём стабилизации
+        sleep(500);
+
+        // Замеряем FPS
+        int totalFPS = 0;
+        int samples = 0;
         long start = System.currentTimeMillis();
-        int frames = 0;
-        while (System.currentTimeMillis() - start < TEST_DURATION_MS) {
-            if (client.getCurrentFps() > 0) frames++;
-            sleep(50);
+
+        while (System.currentTimeMillis() - start < 2000) {
+            int fps = client.getCurrentFps();
+            if (fps > 0 && fps < 999) { // Игнорируем нереалистичные значения
+                totalFPS += fps;
+                samples++;
+            }
+            sleep(100);
         }
-        return frames / (TEST_DURATION_MS / 1000.0);
+
+        // Возвращаем старый рендер
+        if (!oldRenderer.isEmpty()) {
+            TuningApplier.applyRendererOnly(oldRenderer);
+        }
+
+        if (samples == 0) return 1;
+        return totalFPS / samples;
     }
 
     private static void sleep(long ms) {
