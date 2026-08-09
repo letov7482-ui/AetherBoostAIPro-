@@ -12,7 +12,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(Particle.class)
 public class ParticleLimiterMixin {
 
-    @Inject(method = "buildGeometry", at = @At("HEAD"), cancellable = true)
+    @Inject(method = "method_30835", at = @At("HEAD"), cancellable = true, remap = false)
     private void limitParticles(MatrixStack matrices, VertexConsumerProvider vertexConsumers, Camera camera, float tickDelta, CallbackInfo ci) {
         Particle self = (Particle) (Object) this;
         String className = self.getClass().getSimpleName().toLowerCase();
@@ -21,10 +21,12 @@ public class ParticleLimiterMixin {
         if (className.contains("rain") || className.contains("snow")
             || className.contains("bubble") || className.contains("torch")
             || className.contains("dust") || className.contains("drip")) {
-            double distX = camera.getPos().x - self.x;
-            double distY = camera.getPos().y - self.y;
-            double distZ = camera.getPos().z - self.z;
-            if (distX * distX + distY * distY + distZ * distZ > 256) { // 16^2
+
+            double distX = camera.getPos().x - self.getX();
+            double distY = camera.getPos().y - self.getY();
+            double distZ = camera.getPos().z - self.getZ();
+
+            if (distX * distX + distY * distY + distZ * distZ > 256) { // 16^2 = 256
                 ci.cancel();
             }
         }
