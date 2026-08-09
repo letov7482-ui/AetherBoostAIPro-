@@ -4,6 +4,10 @@
   "compatibilityLevel": "JAVA_21",
   "client": [
     "ParticleLimiterMixin",
-    "ChunkCullingMixin"
+    "ChunkCullingMixin",
+    "TextureAnimationMixin",
+    "EntityRenderDistanceMixin",
+    "CloudDisableMixin",
+    "ParticleLimitMixin"
   ]
 }
