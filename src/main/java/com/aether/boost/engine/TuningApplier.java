@@ -14,38 +14,21 @@ public class TuningApplier {
         return Boolean.parseBoolean(System.getProperty(OPTIMIZATION_KEY, "false"));
     }
 
-    /**
-     * Применяет ВСЕ оптимизации.
-     */
+    // ========== ГЛАВНЫЙ МЕТОД ==========
     public static void apply(String renderer, boolean isPC) {
         AetherBoostMod.LOGGER.info("Применяю полную оптимизацию...");
-
-        // 1. Бекап
         backupCurrentConfigs();
-
-        // 2. Рендер
         applyRendererOnly(renderer);
-
-        // 3. Sodium (если есть)
         applySodiumConfig(isPC);
-
-        // 4. Iris (если есть)
         applyIrisConfig(isPC);
-
-        // 5. options.txt
         applyMinecraftConfig(isPC);
-
-        // 6. JVM-аргументы
         applyJVMArgs(isPC);
-
-        // 7. Настройки лаунчера
         applyLauncherConfig(isPC);
-
         System.setProperty(OPTIMIZATION_KEY, "true");
         AetherBoostMod.LOGGER.info("Все оптимизации применены. Перезапустите игру!");
     }
 
-    // --- Рендер ---
+    // ========== РЕНДЕР ==========
     public static void applyRendererOnly(String renderer) {
         AetherBoostMod.LOGGER.info("Переключаю рендер на: {}", renderer);
         String[] paths = {
@@ -70,7 +53,7 @@ public class TuningApplier {
         System.setProperty("pojav.renderer", renderer);
     }
 
-    // --- Sodium ---
+    // ========== SODIUM ==========
     private static void applySodiumConfig(boolean isPC) {
         File f = CONFIG_DIR.resolve("sodium-options.json").toFile();
         if (!f.exists()) return;
@@ -88,7 +71,7 @@ public class TuningApplier {
         }
     }
 
-    // --- Iris ---
+    // ========== IRIS ==========
     private static void applyIrisConfig(boolean isPC) {
         File f = CONFIG_DIR.resolve("iris.properties").toFile();
         if (!f.exists()) return;
@@ -105,7 +88,7 @@ public class TuningApplier {
         }
     }
 
-    // --- options.txt ---
+    // ========== OPTIONS.TXT ==========
     private static void applyMinecraftConfig(boolean isPC) {
         File f = new File(System.getProperty("user.dir"), "options.txt");
         if (!f.exists()) return;
@@ -124,15 +107,12 @@ public class TuningApplier {
         }
     }
 
-    // --- JVM-аргументы ---
+    // ========== JVM-АРГУМЕНТЫ ==========
     private static void applyJVMArgs(boolean isPC) {
-        AetherBoostMod.LOGGER.info("Рекомендуемые JVM-аргументы:");
         String args = "-XX:+UseZGC -XX:+DisableExplicitGC -Djava.awt.headless=true";
         if (!isPC) {
             args += " -Xms256M -Xmx" + Math.min(SystemScanner.getTotalRAM() / 2, 2048) + "M";
         }
-        AetherBoostMod.LOGGER.info(args);
-        // Записываем в файл рядом с лаунчером
         File jvmFile = new File(System.getProperty("user.dir"), "aetherboost_jvm_args.txt");
         try {
             Files.writeString(jvmFile.toPath(), args);
@@ -142,7 +122,7 @@ public class TuningApplier {
         }
     }
 
-    // --- Настройки лаунчера ---
+    // ========== НАСТРОЙКИ ЛАУНЧЕРА ==========
     private static void applyLauncherConfig(boolean isPC) {
         String[] paths = {
             "/storage/emulated/0/Android/data/io.github.fold.launcher/files/config.json",
@@ -166,7 +146,47 @@ public class TuningApplier {
         }
     }
 
-    // --- Бекап ---
+    // ========== ПРЕСЕТЫ ==========
+    public static void applyPvPConfig(boolean isPC) {
+        applyMinecraftConfig(isPC);
+        AetherBoostMod.LOGGER.info("PvP-пресет применён");
+    }
+
+    public static void applyBalancedConfig(boolean isPC) {
+        File f = new File(System.getProperty("user.dir"), "options.txt");
+        if (!f.exists()) return;
+        try {
+            String c = Files.readString(f.toPath());
+            c = c.replaceAll("renderDistance:\\d+", "renderDistance:" + (isPC ? "12" : "8"));
+            c = c.replaceAll("graphicsMode:\\w+", "graphicsMode:fancy");
+            c = c.replaceAll("ao:\\w+", "ao:true");
+            c = c.replaceAll("enableClouds:\\w+", "enableClouds:true");
+            Files.writeString(f.toPath(), c);
+            AetherBoostMod.LOGGER.info("Balanced-пресет применён");
+        } catch (IOException e) {
+            AetherBoostMod.LOGGER.error("Ошибка Balanced", e);
+        }
+    }
+
+    public static void applyMaxFPSConfig(boolean isPC) {
+        File f = new File(System.getProperty("user.dir"), "options.txt");
+        if (!f.exists()) return;
+        try {
+            String c = Files.readString(f.toPath());
+            c = c.replaceAll("masterVolume:\\d+\\.\\d+", "masterVolume:0.0");
+            c = c.replaceAll("renderDistance:\\d+", "renderDistance:" + (isPC ? "6" : "4"));
+            c = c.replaceAll("graphicsMode:\\w+", "graphicsMode:fast");
+            c = c.replaceAll("ao:\\w+", "ao:false");
+            c = c.replaceAll("enableVsync:\\w+", "enableVsync:false");
+            c = c.replaceAll("enableClouds:\\w+", "enableClouds:false");
+            Files.writeString(f.toPath(), c);
+            AetherBoostMod.LOGGER.info("Max FPS-пресет применён");
+        } catch (IOException e) {
+            AetherBoostMod.LOGGER.error("Ошибка Max FPS", e);
+        }
+    }
+
+    // ========== БЕКАП ==========
     private static void backupCurrentConfigs() {
         try {
             Files.createDirectories(BACKUP_DIR);
@@ -182,7 +202,7 @@ public class TuningApplier {
         }
     }
 
-    // --- Сброс ---
+    // ========== СБРОС ==========
     public static void reset() {
         AetherBoostMod.LOGGER.info("Сброс...");
         try {
@@ -199,4 +219,4 @@ public class TuningApplier {
             AetherBoostMod.LOGGER.error("Ошибка сброса", e);
         }
     }
-}
+                 }
