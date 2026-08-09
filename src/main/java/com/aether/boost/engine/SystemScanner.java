@@ -5,18 +5,58 @@ import org.lwjgl.opengl.GL11;
 
 public class SystemScanner {
 
-    public static boolean isPC() {
-        String os = System.getProperty("os.name").toLowerCase();
-        return os.contains("win") || os.contains("mac") || os.contains("linux") && !isAndroid();
+    public enum DeviceType {
+        PC, ANDROID, IOS, UNKNOWN
     }
 
-    private static boolean isAndroid() {
+    /**
+     * Определяет тип устройства.
+     */
+    public static DeviceType getDeviceType() {
+        String os = System.getProperty("os.name", "").toLowerCase();
+        String vendor = System.getProperty("java.vendor", "").toLowerCase();
+        String javaHome = System.getProperty("java.home", "").toLowerCase();
+        String runtime = System.getProperty("java.runtime.name", "").toLowerCase();
+
+        // Проверка на iOS
+        if (os.contains("ios") || os.contains("iphone") || os.contains("ipad")
+            || vendor.contains("ios") || vendor.contains("apple")
+            || runtime.contains("ios")) {
+            return DeviceType.IOS;
+        }
+
+        // Проверка на Android
+        if (os.contains("android") || vendor.contains("android")
+            || javaHome.contains("android") || javaHome.startsWith("/data/")
+            || runtime.contains("android")) {
+            return DeviceType.ANDROID;
+        }
+
         try {
             Class.forName("android.os.Build");
-            return true;
-        } catch (ClassNotFoundException e) {
-            return false;
+            return DeviceType.ANDROID;
+        } catch (ClassNotFoundException ignored) {}
+
+        // Проверка на ПК
+        if (os.contains("win") || os.contains("mac") || os.contains("linux")) {
+            return DeviceType.PC;
         }
+
+        return DeviceType.UNKNOWN;
+    }
+
+    // Для обратной совместимости
+    public static boolean isPC() {
+        return getDeviceType() == DeviceType.PC;
+    }
+
+    public static String getDeviceTypeName() {
+        return switch (getDeviceType()) {
+            case PC -> "ПК";
+            case ANDROID -> "Телефон (Android)";
+            case IOS -> "iPhone/iPad (iOS)";
+            case UNKNOWN -> "Неизвестно";
+        };
     }
 
     public static String getGPUInfo() {
