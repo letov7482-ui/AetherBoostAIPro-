@@ -32,9 +32,9 @@ public class BenchmarkScreen extends Screen {
     protected void init() {
         int cx = this.width / 2;
         int bottomY = this.height - 55;
+        int buttonY = this.height / 2 + 10;
 
-        // === КНОПКИ ВНИЗУ (всегда видны) ===
-        // FPS-монитор (слева)
+        // === НИЖНИЕ КНОПКИ (всегда) ===
         addDrawableChild(ButtonWidget.builder(
             Text.literal(FPSMonitor.isEnabled() ? "FPS: ON" : "FPS: OFF"), btn -> {
                 FPSMonitor.setEnabled(!FPSMonitor.isEnabled());
@@ -42,21 +42,17 @@ public class BenchmarkScreen extends Screen {
                 init();
             }).dimensions(5, bottomY, 60, 20).build());
 
-        // Очистка RAM (слева)
         addDrawableChild(ButtonWidget.builder(
             Text.literal("Clear RAM"), btn -> {
                 int freed = MemoryCleaner.cleanMemory();
                 message = "Freed " + freed + " MB";
             }).dimensions(70, bottomY, 60, 20).build());
 
-        // Закрыть (справа)
         addDrawableChild(ButtonWidget.builder(
             Text.literal("Close"), btn -> close())
             .dimensions(this.width - 50, bottomY, 40, 20).build());
 
         // === ОСНОВНЫЕ КНОПКИ ===
-        int buttonY = this.height / 2 + 20;
-
         if (state == State.READY) {
             addDrawableChild(ButtonWidget.builder(
                 Text.literal("Start Smart Test"), btn -> startTest())
@@ -70,6 +66,10 @@ public class BenchmarkScreen extends Screen {
             addDrawableChild(ButtonWidget.builder(
                 Text.literal("Reset All"), btn -> resetSettings())
                 .dimensions(cx - 70, buttonY + 22, 140, 20).build());
+            addDrawableChild(ButtonWidget.builder(
+                Text.literal("Presets"), btn -> {
+                    client.setScreen(new PresetsScreen(this, isPC));
+                }).dimensions(cx - 70, buttonY + 44, 140, 20).build());
         }
 
         if (state == State.ERROR) {
@@ -190,7 +190,7 @@ public class BenchmarkScreen extends Screen {
         // Заголовок
         ctx.drawCenteredTextWithShadow(textRenderer, "AetherBoost AI Pro", cx, 10, 0xFF00FF00);
 
-        // Сообщение о состоянии
+        // Сообщение
         if (!message.isEmpty()) {
             int color = message.startsWith("Error") ? 0xFF5555 : 0xFFCCCCCC;
             ctx.drawCenteredTextWithShadow(textRenderer, message, cx, 25, color);
@@ -199,15 +199,15 @@ public class BenchmarkScreen extends Screen {
         // Прогресс-бар
         if (state == State.TESTING) {
             int barW = 160, barH = 8;
-            int barX = cx - barW / 2, barY = cy - 30;
+            int barX = cx - barW / 2, barY = cy - 35;
             ctx.fill(barX, barY, barX + barW, barY + barH, 0xFF333333);
             int fill = barW * progress / progressMax;
             ctx.fill(barX, barY, barX + fill, barY + barH, 0xFF00FF00);
         }
 
-        // Результаты
+        // Результаты теста
         if (state == State.DONE || state == State.APPLIED) {
-            int y = cy - 30;
+            int y = cy - 40;
             ctx.drawCenteredTextWithShadow(textRenderer, "Device: " + deviceType, cx, y, 0xFFAAAAFF);
             y += 12;
             ctx.drawCenteredTextWithShadow(textRenderer, "GPU: " + SystemScanner.getGPUInfo(), cx, y, 0xFFAAAAAA);
@@ -217,4 +217,4 @@ public class BenchmarkScreen extends Screen {
             ctx.drawCenteredTextWithShadow(textRenderer, "Expected gain: +" + estimatedGain + " FPS", cx, y, 0xFF00FF00);
         }
     }
-                }
+}
