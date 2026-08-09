@@ -17,7 +17,7 @@ public class FPSMonitor {
         if (!enabled) return;
 
         MinecraftClient client = MinecraftClient.getInstance();
-        if (client.getCurrentFps() <= 0) return;
+        if (client == null || client.getCurrentFps() <= 0) return;
 
         int fps = client.getCurrentFps();
         int color;
