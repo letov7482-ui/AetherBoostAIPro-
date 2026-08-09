@@ -10,13 +10,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @Mixin(ChunkBuilder.BuiltChunk.class)
 public class ChunkCullingMixin {
 
-    /**
-     * Более агрессивное отсечение: считаем, что чанк не виден,
-     * если соседний чанк полностью перекрывает его.
-     */
-    @Inject(method = "isVisibleThrough", at = @At("HEAD"), cancellable = true)
+    @Inject(method = "method_60963", at = @At("HEAD"), cancellable = true, remap = false)
     private void optimizeVisibilityCheck(Direction from, Direction to, CallbackInfoReturnable<Boolean> cir) {
-        // Если чанк сзади и не на краю — не рендерим
+        // Агрессивное отсечение: не рендерим чанк, если он полностью за другим
         if (from == to.getOpposite()) {
             cir.setReturnValue(false);
         }
