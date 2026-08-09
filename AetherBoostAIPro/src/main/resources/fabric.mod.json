@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "id": "aetherboost",
+  "version": "${version}",
+  "name": "AetherBoost AI Pro",
+  "description": "Smart AI FPS booster. Auto-detects all installed renderers (GL4ES, Zink, ANGLE, Vulkan) and applies optimal settings for PC & mobile.",
+  "authors": ["Aether"],
+  "license": "MIT",
+  "environment": "client",
+  "entrypoints": {
+    "main": ["com.aether.boost.AetherBoostMod"]
+  },
+  "mixins": ["aetherboost.mixins.json"],
+  "depends": {
+    "fabricloader": ">=0.16.5",
+    "minecraft": "~1.21.4"
+  }
+}
