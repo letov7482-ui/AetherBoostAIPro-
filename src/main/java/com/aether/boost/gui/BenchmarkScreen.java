@@ -17,6 +17,7 @@ public class BenchmarkScreen extends Screen {
     private String bestRenderer = "";
     private int estimatedGain = 0;
     private String deviceType = "";
+    private String recommendation = "";
     private List<String> foundRenderers;
     private boolean isPC;
 
@@ -41,16 +42,16 @@ public class BenchmarkScreen extends Screen {
         if (state == State.DONE) {
             addDrawableChild(ButtonWidget.builder(
                 Text.literal("✅ Применить настройки"), btn -> applySettings())
-                .dimensions(cx - 80, 80, 160, 20).build());
+                .dimensions(cx - 80, 130, 160, 20).build());
             addDrawableChild(ButtonWidget.builder(
                 Text.literal("🔄 Сбросить"), btn -> resetSettings())
-                .dimensions(cx - 80, 105, 160, 20).build());
+                .dimensions(cx - 80, 155, 160, 20).build());
         }
 
         if (state == State.APPLIED) {
             addDrawableChild(ButtonWidget.builder(
                 Text.literal("🔄 Сбросить настройки"), btn -> resetSettings())
-                .dimensions(cx - 80, 80, 160, 20).build());
+                .dimensions(cx - 80, 130, 160, 20).build());
         }
 
         if (state == State.ERROR) {
@@ -61,7 +62,7 @@ public class BenchmarkScreen extends Screen {
                     clearChildren();
                     init();
                 })
-                .dimensions(cx - 80, 80, 160, 20).build());
+                .dimensions(cx - 80, 130, 160, 20).build());
         }
 
         addDrawableChild(ButtonWidget.builder(
@@ -86,7 +87,6 @@ public class BenchmarkScreen extends Screen {
         } catch (Exception e) {
             state = State.ERROR;
             message = "❌ Ошибка: " + e.getMessage();
-            AetherBoostMod.LOGGER.error("Ошибка применения настроек", e);
         }
         clearChildren();
         init();
@@ -97,6 +97,7 @@ public class BenchmarkScreen extends Screen {
             TuningApplier.reset();
             state = State.READY;
             message = "Настройки сброшены.";
+            recommendation = "";
         } catch (Exception e) {
             message = "❌ Ошибка сброса: " + e.getMessage();
         }
@@ -140,6 +141,7 @@ public class BenchmarkScreen extends Screen {
                         bestRenderer,
                         isPC
                     );
+                    recommendation = ProfileGenerator.generateRecommendation(bestRenderer, estimatedGain, deviceType);
                     break;
                 case 5:
                     state = State.DONE;
@@ -171,13 +173,13 @@ public class BenchmarkScreen extends Screen {
         // Текущее сообщение
         if (!message.isEmpty()) {
             int color = message.startsWith("❌") ? 0xFF5555 : 0xFFFFFF;
-            ctx.drawCenteredTextWithShadow(textRenderer, message, cx, cy - 40, color);
+            ctx.drawCenteredTextWithShadow(textRenderer, message, cx, cy - 50, color);
         }
 
         // Прогресс-бар
         if (state == State.TESTING) {
             int barW = 200, barH = 10;
-            int barX = cx - barW / 2, barY = cy - 10;
+            int barX = cx - barW / 2, barY = cy - 20;
             ctx.fill(barX, barY, barX + barW, barY + barH, 0xFF444444);
             int fill = barW * progress / progressMax;
             ctx.fill(barX, barY, barX + fill, barY + barH, 0xFF00FF00);
@@ -185,20 +187,14 @@ public class BenchmarkScreen extends Screen {
             ctx.drawCenteredTextWithShadow(textRenderer, progressText, cx, barY + barH + 4, 0xFFAAAAAA);
         }
 
-        // Результаты теста
-        if (state == State.DONE || state == State.APPLIED) {
-            String[] lines = {
-                "Тип устройства: " + deviceType,
-                "GPU: " + SystemScanner.getGPUInfo(),
-                "RAM: " + SystemScanner.getFreeRAM() + " MB",
-                "Найдено рендеров: " + (foundRenderers != null ? foundRenderers.size() : 0),
-                "Лучший рендер: " + bestRenderer,
-                "Ожидаемый прирост: +" + estimatedGain + " FPS"
-            };
-            int startY = cy - 25;
+        // Рекомендация (главное!)
+        if ((state == State.DONE || state == State.APPLIED) && !recommendation.isEmpty()) {
+            String[] lines = recommendation.split("\n");
+            int startY = cy - 30;
             for (int i = 0; i < lines.length; i++) {
-                ctx.drawCenteredTextWithShadow(textRenderer, lines[i], cx, startY + i * 12, 0xFFAAAAFF);
+                int color = i == 0 ? 0xFFFF55 : 0xFFAAAAFF;
+                ctx.drawCenteredTextWithShadow(textRenderer, lines[i], cx, startY + i * 12, color);
             }
         }
     }
-}
+                        }
