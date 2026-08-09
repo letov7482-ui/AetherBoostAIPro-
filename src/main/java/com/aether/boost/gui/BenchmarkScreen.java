@@ -17,7 +17,6 @@ public class BenchmarkScreen extends Screen {
     private String bestRenderer = "";
     private int estimatedGain = 0;
     private String deviceType = "";
-    private String recommendation = "";
     private List<String> foundRenderers;
     private boolean isPC;
 
@@ -32,80 +31,62 @@ public class BenchmarkScreen extends Screen {
     @Override
     protected void init() {
         int cx = this.width / 2;
+        int bottomY = this.height - 55;
 
-        // Кнопка запуска теста
+        // === КНОПКИ ВНИЗУ (всегда видны) ===
+        // FPS-монитор (слева)
+        addDrawableChild(ButtonWidget.builder(
+            Text.literal(FPSMonitor.isEnabled() ? "FPS: ON" : "FPS: OFF"), btn -> {
+                FPSMonitor.setEnabled(!FPSMonitor.isEnabled());
+                clearChildren();
+                init();
+            }).dimensions(5, bottomY, 60, 20).build());
+
+        // Очистка RAM (слева)
+        addDrawableChild(ButtonWidget.builder(
+            Text.literal("Clear RAM"), btn -> {
+                int freed = MemoryCleaner.cleanMemory();
+                message = "Freed " + freed + " MB";
+            }).dimensions(70, bottomY, 60, 20).build());
+
+        // Закрыть (справа)
+        addDrawableChild(ButtonWidget.builder(
+            Text.literal("Close"), btn -> close())
+            .dimensions(this.width - 50, bottomY, 40, 20).build());
+
+        // === ОСНОВНЫЕ КНОПКИ ===
+        int buttonY = this.height / 2 + 20;
+
         if (state == State.READY) {
             addDrawableChild(ButtonWidget.builder(
-                Text.literal("Запустить умный тест"), btn -> startTest())
-                .dimensions(cx - 80, 40, 160, 20).build());
+                Text.literal("Start Smart Test"), btn -> startTest())
+                .dimensions(cx - 70, buttonY, 140, 20).build());
         }
 
-        // Кнопки после теста
         if (state == State.DONE || state == State.APPLIED) {
             addDrawableChild(ButtonWidget.builder(
-                Text.literal("✅ Применить настройки"), btn -> applySettings())
-                .dimensions(cx - 80, 100, 160, 20).build());
+                Text.literal("Apply Settings"), btn -> applySettings())
+                .dimensions(cx - 70, buttonY, 140, 20).build());
             addDrawableChild(ButtonWidget.builder(
-                Text.literal("🔄 Сбросить"), btn -> resetSettings())
-                .dimensions(cx - 80, 125, 160, 20).build());
-
-            // Пресеты
-            addDrawableChild(ButtonWidget.builder(
-                Text.literal("⚔️ PvP Mode"), btn -> {
-                    OptimizationPresets.applyPreset(OptimizationPresets.Preset.PVP, isPC);
-                    message = "✅ Пресет PvP применён!";
-                }).dimensions(cx - 80, 155, 160, 20).build());
-
-            addDrawableChild(ButtonWidget.builder(
-                Text.literal("⚖️ Balanced"), btn -> {
-                    OptimizationPresets.applyPreset(OptimizationPresets.Preset.BALANCED, isPC);
-                    message = "✅ Пресет Balanced применён!";
-                }).dimensions(cx - 80, 180, 160, 20).build());
-
-            addDrawableChild(ButtonWidget.builder(
-                Text.literal("⚡ Max FPS"), btn -> {
-                    OptimizationPresets.applyPreset(OptimizationPresets.Preset.MAX_FPS, isPC);
-                    message = "✅ Пресет Max FPS применён!";
-                }).dimensions(cx - 80, 205, 160, 20).build());
+                Text.literal("Reset All"), btn -> resetSettings())
+                .dimensions(cx - 70, buttonY + 22, 140, 20).build());
         }
 
-        // Кнопка ошибки
         if (state == State.ERROR) {
             addDrawableChild(ButtonWidget.builder(
-                Text.literal("Попробовать снова"), btn -> {
+                Text.literal("Retry"), btn -> {
                     state = State.READY;
                     message = "";
                     clearChildren();
                     init();
-                }).dimensions(cx - 80, 100, 160, 20).build());
+                }).dimensions(cx - 40, buttonY, 80, 20).build());
         }
-
-        // FPS-монитор
-        addDrawableChild(ButtonWidget.builder(
-            Text.literal(FPSMonitor.isEnabled() ? "📊 FPS: ON" : "📊 FPS: OFF"), btn -> {
-                FPSMonitor.setEnabled(!FPSMonitor.isEnabled());
-                clearChildren();
-                init();
-            }).dimensions(10, height - 55, 80, 20).build());
-
-        // Очистка памяти
-        addDrawableChild(ButtonWidget.builder(
-            Text.literal("🧹 Очистить RAM"), btn -> {
-                int freed = MemoryCleaner.cleanMemory();
-                message = "✅ Освобождено " + freed + " MB";
-            }).dimensions(width - 100, height - 55, 90, 20).build());
-
-        // Закрыть
-        addDrawableChild(ButtonWidget.builder(
-            Text.literal("Закрыть"), btn -> close())
-            .dimensions(cx - 30, height - 30, 60, 20).build());
     }
 
     private void startTest() {
         state = State.TESTING;
         message = "";
         progress = 0;
-        progressMax = 5;
         clearChildren();
         init();
     }
@@ -113,12 +94,11 @@ public class BenchmarkScreen extends Screen {
     private void applySettings() {
         try {
             TuningApplier.apply(bestRenderer, isPC);
-            FPSMonitor.setEnabled(true);
             state = State.APPLIED;
-            message = "✅ Настройки применены! Перезапустите игру.";
+            message = "Applied! Restart game.";
         } catch (Exception e) {
             state = State.ERROR;
-            message = "❌ Ошибка: " + e.getMessage();
+            message = "Error: " + e.getMessage();
         }
         clearChildren();
         init();
@@ -129,10 +109,9 @@ public class BenchmarkScreen extends Screen {
             TuningApplier.reset();
             FPSMonitor.setEnabled(false);
             state = State.READY;
-            message = "Настройки сброшены.";
-            recommendation = "";
+            message = "Reset to defaults.";
         } catch (Exception e) {
-            message = "❌ Ошибка сброса: " + e.getMessage();
+            message = "Error: " + e.getMessage();
         }
         clearChildren();
         init();
@@ -141,12 +120,9 @@ public class BenchmarkScreen extends Screen {
     @Override
     public void tick() {
         super.tick();
-
-        // Авто-очистка памяти при низком FPS
         if (FPSMonitor.isEnabled() && state != State.TESTING) {
             MemoryCleaner.autoCleanIfNeeded();
         }
-
         if (state != State.TESTING) return;
 
         progress++;
@@ -155,17 +131,17 @@ public class BenchmarkScreen extends Screen {
         try {
             switch (progress) {
                 case 1:
-                    message = "Определяем тип устройства...";
+                    message = "Detecting device...";
                     SystemScanner.DeviceType type = SystemScanner.getDeviceType();
                     deviceType = SystemScanner.getDeviceTypeName();
                     isPC = (type == SystemScanner.DeviceType.PC);
                     break;
                 case 2:
-                    message = "Ищем установленные рендеры...";
+                    message = "Scanning renderers...";
                     foundRenderers = RendererDetector.detectAllRenderers();
                     break;
                 case 3:
-                    message = "Тестируем рендеры...";
+                    message = "Testing renderers...";
                     if (foundRenderers != null && !foundRenderers.isEmpty()) {
                         bestRenderer = BenchmarkEngine.findBestRenderer(foundRenderers, isPC);
                     } else {
@@ -173,18 +149,17 @@ public class BenchmarkScreen extends Screen {
                     }
                     break;
                 case 4:
-                    message = "Рассчитываем прирост FPS...";
+                    message = "Calculating gain...";
                     estimatedGain = ProfileGenerator.estimateGain(
                         SystemScanner.getGPUInfo(),
                         SystemScanner.getFreeRAM(),
                         bestRenderer,
                         isPC
                     );
-                    recommendation = ProfileGenerator.generateRecommendation(bestRenderer, estimatedGain, deviceType);
                     break;
                 case 5:
                     state = State.DONE;
-                    message = "✅ Тест завершён!";
+                    message = "";
                     ReportGenerator.generateReport(
                         bestRenderer, estimatedGain, deviceType,
                         SystemScanner.getGPUInfo(),
@@ -198,8 +173,7 @@ public class BenchmarkScreen extends Screen {
             }
         } catch (Exception e) {
             state = State.ERROR;
-            message = "❌ Ошибка теста: " + e.getMessage();
-            AetherBoostMod.LOGGER.error("Ошибка тестирования", e);
+            message = "Test error: " + e.getMessage();
             clearChildren();
             init();
         }
@@ -214,33 +188,33 @@ public class BenchmarkScreen extends Screen {
         int cy = this.height / 2;
 
         // Заголовок
-        ctx.drawCenteredTextWithShadow(textRenderer, "⚡ AetherBoost AI Pro ⚡", cx, 12, 0xFF00FF00);
+        ctx.drawCenteredTextWithShadow(textRenderer, "AetherBoost AI Pro", cx, 10, 0xFF00FF00);
 
-        // Сообщение
+        // Сообщение о состоянии
         if (!message.isEmpty()) {
-            int color = message.startsWith("❌") ? 0xFF5555 : 0xFFFFFF;
-            ctx.drawCenteredTextWithShadow(textRenderer, message, cx, 28, color);
+            int color = message.startsWith("Error") ? 0xFF5555 : 0xFFCCCCCC;
+            ctx.drawCenteredTextWithShadow(textRenderer, message, cx, 25, color);
         }
 
         // Прогресс-бар
         if (state == State.TESTING) {
-            int barW = 200, barH = 10;
-            int barX = cx - barW / 2, barY = cy - 10;
-            ctx.fill(barX, barY, barX + barW, barY + barH, 0xFF444444);
+            int barW = 160, barH = 8;
+            int barX = cx - barW / 2, barY = cy - 30;
+            ctx.fill(barX, barY, barX + barW, barY + barH, 0xFF333333);
             int fill = barW * progress / progressMax;
             ctx.fill(barX, barY, barX + fill, barY + barH, 0xFF00FF00);
-            String progressText = progress + "/" + progressMax;
-            ctx.drawCenteredTextWithShadow(textRenderer, progressText, cx, barY + barH + 4, 0xFFAAAAAA);
         }
 
-        // Рекомендация
-        if ((state == State.DONE || state == State.APPLIED) && !recommendation.isEmpty()) {
-            String[] lines = recommendation.split("\n");
-            int startY = cy - 35;
-            for (int i = 0; i < lines.length; i++) {
-                int color = i == 0 ? 0xFFFF55 : 0xFFAAAAFF;
-                ctx.drawCenteredTextWithShadow(textRenderer, lines[i], cx, startY + i * 12, color);
-            }
+        // Результаты
+        if (state == State.DONE || state == State.APPLIED) {
+            int y = cy - 30;
+            ctx.drawCenteredTextWithShadow(textRenderer, "Device: " + deviceType, cx, y, 0xFFAAAAFF);
+            y += 12;
+            ctx.drawCenteredTextWithShadow(textRenderer, "GPU: " + SystemScanner.getGPUInfo(), cx, y, 0xFFAAAAAA);
+            y += 12;
+            ctx.drawCenteredTextWithShadow(textRenderer, "Best renderer: " + bestRenderer, cx, y, 0xFFFF55);
+            y += 14;
+            ctx.drawCenteredTextWithShadow(textRenderer, "Expected gain: +" + estimatedGain + " FPS", cx, y, 0xFF00FF00);
         }
     }
-    }
+                }
