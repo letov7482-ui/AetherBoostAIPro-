@@ -1,10 +1,12 @@
 package com.aether.boost.engine;
 
+import com.aether.boost.AetherBoostMod;
+
 public class OptimizationPresets {
     public enum Preset {
-        PVP("PvP Mode", "Максимальный FPS для PvP"),
-        BALANCED("Balanced", "Баланс графики и FPS"),
-        MAX_FPS("Max FPS", "Экстремальная оптимизация");
+        PVP("PvP Mode", "Max FPS for PvP"),
+        BALANCED("Balanced", "Balance of FPS and quality"),
+        MAX_FPS("Ultra FPS", "Extreme optimization");
 
         public final String name;
         public final String description;
@@ -16,16 +18,11 @@ public class OptimizationPresets {
     }
 
     public static void applyPreset(Preset preset, boolean isPC) {
+        AetherBoostMod.LOGGER.info("Applying preset: {}", preset.name);
         switch (preset) {
-            case PVP:
-                TuningApplier.applyPvPConfig(isPC);
-                break;
-            case BALANCED:
-                TuningApplier.applyBalancedConfig(isPC);
-                break;
-            case MAX_FPS:
-                TuningApplier.applyMaxFPSConfig(isPC);
-                break;
+            case PVP -> TuningApplier.applyPvPConfig(isPC);
+            case BALANCED -> TuningApplier.applyBalancedConfig(isPC);
+            case MAX_FPS -> TuningApplier.applyMaxFPSConfig(isPC);
         }
     }
 }
